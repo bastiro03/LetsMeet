@@ -3,7 +3,8 @@ package com.encoway.importer;
 import com.encoway.importer.data.DataImporter;
 import com.encoway.importer.db.SchemaCreator;
 import com.encoway.importer.excel.ExcelReader;
-import com.encoway.importer.dto.UserRecord;
+import com.encoway.importer.model.UserRecord;
+
 
 import java.io.File;
 import java.util.List;

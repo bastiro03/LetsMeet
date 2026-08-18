@@ -1,7 +1,8 @@
 package com.encoway.importer.data;
 
 import com.encoway.importer.db.DatabaseConnection;
-import com.encoway.importer.dto.UserRecord;
+import com.encoway.importer.model.UserRecord;
+
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

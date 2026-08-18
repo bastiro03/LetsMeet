@@ -1,6 +1,7 @@
 package com.encoway.importer.excel;
 
-import com.encoway.importer.dto.UserRecord;
+import com.encoway.importer.model.UserRecord;
+
 import org.apache.poi.ss.usermodel.*;
 
 import java.io.File;
@@ -65,13 +66,31 @@ public class ExcelReader {
 
     private String extractPostalCode(String address) {
         if (address == null) return null;
-        String[] parts = address.split(", ");
+        String[] parts = address.split(", ", 3);
+
         return parts.length > 1 ? parts[1] : null;
     }
 
     private String extractCity(String address) {
         if (address == null) return null;
-        String[] parts = address.split(", ");
+        String[] parts = address.split(", ", 3);
         return parts.length > 2 ? parts[2] : null;
     }
+
+    private LocalDate parseDate(Cell cell) {
+        if (cell == null || cell.getCellType() == CellType.BLANK) {
+            return null;
+        }
+
+        return switch (cell.getCellType()) {
+            case NUMERIC -> cell.getLocalDateTimeCellValue().toLocalDate();
+            case STRING -> LocalDate.parse(
+                    cell.getStringCellValue().trim(),
+                    java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy")
+            );
+            default -> throw new IllegalStateException("Unexpected cell type: " + cell.getCellType());
+        };
+    }
+
+
 }
