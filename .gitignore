@@ -1,0 +1,27 @@
+# Maven build output
+target/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Java
+*.class
+
+# Excel temp files
+~$*.xlsx
+
+# Docker
+tmp-qa-embedded/
+tmp_calc_template_unzip/
+tmp_framework_inspect/
