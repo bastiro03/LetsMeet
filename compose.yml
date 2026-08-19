@@ -17,7 +17,9 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: secret
     ports:
-      - "${LETSMEET_PG_PORT:-5432}:5432"
+      # Nur an loopback binden: Docker-DNAT laeuft an ufw vorbei, ein Binding an
+      # 0.0.0.0 stellt die DB damit ungefiltert ins Internet.
+      - "${LETSMEET_PG_PORT:-127.0.0.1:5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d lf8_lets_meet_db"]
       interval: 5s
@@ -31,7 +33,7 @@ services:
     volumes:
       - lf8_lets_meet_mongodb_data:/data/db
     ports:
-      - "${LETSMEET_MONGO_PORT:-27017}:27017"
+      - "${LETSMEET_MONGO_PORT:-127.0.0.1:27017}:27017"
     environment:
       MONGO_INITDB_DATABASE: LetsMeet
 
@@ -39,7 +41,9 @@ services:
     container_name: lf8_lets_meet_kundinnen_app
     image: berndheidemann/letsmeet-kundinnen-app:v3-whitespace-2026-08-10
     ports:
-      - "3611:3611"
+      # Oeffentlich erreichbar ist die App ueber Caddy (letsmeet.heide-dev.de),
+      # das per localhost proxyt — der Container braucht kein 0.0.0.0.
+      - "${LETSMEET_APP_PORT:-127.0.0.1:3611}:3611"
     volumes:
       - lf8_lets_meet_check_history:/data
     environment:

@@ -4,6 +4,14 @@ Normalisierung heißt: Tabellen so aufteilen, dass jede Tabelle genau ein Thema 
 kein Wert doppelt gepflegt werden muss. Die Normalformen bauen aufeinander auf — die 2. Normalform
 setzt die 1. voraus, die 3. setzt die 2. voraus.
 
+**Wenn ihr nur einen Satz mitnehmt, dann diesen:**
+
+> Jede Spalte beschreibt **direkt** das, was der Primärschlüssel beschreibt, und nichts anderes.
+> Jede Zelle enthält genau **einen einzelnen Wert**.
+
+Alles Weitere unten ist die genaue Ausformulierung davon — zum Nachschlagen, wenn ein konkreter
+Fall unklar ist.
+
 **Grundlage vorweg:** Jede Zeile einer Tabelle wird durch einen **Primärschlüssel** eindeutig
 identifiziert. Er kann aus einer Spalte bestehen oder aus mehreren — dann heißt er
 **zusammengesetzter Primärschlüssel**. Alle Spalten, die nicht zum Primärschlüssel gehören,
@@ -119,6 +127,20 @@ der Kundennummer — und die ist selbst nur eine Nicht-Schlüssel-Spalte.
 **Lösung:** „Lieferant“ und „Lieferant-Adresse“ kommen in eine eigene Tabelle „Lieferanten“.
 
 ---
+
+## **Prüft eure Tabellen damit durch**
+
+Drei Fragen, die ihr an jede eurer Tabellen stellen könnt:
+
+1. Gibt es **Zellen mit mehreren Werten** — Listen, Aufzählungen, „a, b, c“ in einem Feld?
+   → Aufteilen, bis jede Zelle einen Wert enthält.
+2. Besteht der Primärschlüssel aus **mehreren Spalten**, und gibt es Spalten, die nur von
+   *einem Teil* davon abhängen? → Diese Spalten wandern in die Tabelle dieses Schlüsselteils.
+3. Gibt es **Abhängigkeiten zwischen Nicht-Schlüssel-Spalten** — eine Spalte, die eine andere
+   Spalte beschreibt statt den Schlüssel? → Beide in eine eigene Tabelle, Fremdschlüssel bleibt.
+
+Eine Frage hilft fast immer weiter: **Über welche Sache ist dieser Wert eigentlich eine
+Aussage?** Steht er nicht in der Tabelle dieser Sache, gehört er dorthin.
 
 ## **Kurzformel**
 

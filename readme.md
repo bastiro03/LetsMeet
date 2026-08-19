@@ -65,7 +65,11 @@ letsmeet up
 
 Damit laufen dieselben drei Dienste als gewöhnliche Programme in eurem eigenen Arbeitsbereich.
 `letsmeet status` zeigt, was gerade läuft; `letsmeet down` stoppt alles wieder, ohne eure Daten
-zu löschen.
+zu löschen. `letsmeet zugang` zeigt euch jederzeit alle Verbindungsdaten.
+
+Als Einstieg im Browser liegt `notebooks/00-zugriff.ipynb` bereit: Es prüft, ob die Dienste
+laufen, und stellt je eine Verbindung zu MongoDB und PostgreSQL her. Mehr macht es nicht — die
+Analyse ist eure Arbeit.
 
 ### In beiden Varianten erreichbar
 
@@ -104,6 +108,18 @@ docker compose up -d --force-recreate kundinnen_app
 ```bash
 letsmeet contract V2
 ```
+
+## Vor Akt 1: eine Aufwärmrunde
+
+Bevor es an die echten Daten geht, macht ihr **alle** einmal `notebooks/01-erd-zu-tabelle.ipynb` —
+35 Minuten an einem fremden Fall, einer Fahrradwerkstatt. Aus einem kleinen ER-Diagramm baut ihr
+zwei Tabellen, füllt sie, prüft die Beziehung mit einem `JOIN` und beantwortet eine Frage. Vier
+Schritte, nach jedem steht ein prüfbares „Fertig, wenn …“.
+
+Der Zweck: `CREATE TABLE`, `INSERT` und `JOIN` einmal an einem winzigen Fall gesehen zu haben,
+bevor sie in Akt 1 gleichzeitig mit Datenqualität, Migration und Git auf euch treffen. Mit
+Let’s Meet hat der Fall nichts zu tun — übertragen müsst ihr selbst. Alle Tabellen darin heißen
+`demo_…` und stören eure spätere Migration nicht.
 
 ---
 
@@ -241,7 +257,9 @@ entwickelt ER-Diagramm und relationales Schema und registriert die vollständige
 Berücksichtigt dabei:
 
 - Transformation ins Relationenmodell und dritte Normalform; siehe
-  [`normalization.md`](./normalization.md);
+  [`normalization.md`](./normalization.md). Wenn ihr noch kein Gefühl dafür habt, woran man eine
+  unaufgeräumte Tabelle merkt, lest vorher [`gute-tabellen.md`](./gute-tabellen.md) — dieselben
+  Daten einmal gewachsen und einmal aufgeräumt, ohne Regelwerk;
 - priorisierte und ausdrücklich nicht gemochte Hobbys (`-100` bis `100`). Der Wertebereich ist
   fachlich mit der Kundin vereinbart; die aktuelle Datenlieferung schöpft ihn nicht aus. Modelliert
   den vereinbarten Bereich, nicht den in der Stichprobe vorgefundenen;
@@ -368,10 +386,15 @@ Auf dem Schulserver laufen grafische Werkzeuge wie DBeaver oder Compass nicht. D
 sind dieselben; ihr erreicht die Datenbanken im Terminal mit `letsmeet psql` und `letsmeet mongosh`
 oder aus einem Notebook heraus. `letsmeet zugang` zeigt euch diese Angaben jederzeit an.
 
+Ein fertiges Startnotebook liegt unter `notebooks/00-zugriff.ipynb` — beide Verbindungen als
+lauffähige Zellen, dazu SQL direkt in der Zelle über `%sql`. Es ist auf den Schulserver
+zugeschnitten; unter Docker tauscht ihr im Verbindungsstring `pg8000` gegen euren Treiber.
+Daneben liegt `notebooks/01-erd-zu-tabelle.ipynb`, die Aufwärmrunde vor Akt 1 (siehe
+[Vor Akt 1: eine Aufwärmrunde](#vor-akt-1-eine-aufwärmrunde)).
+
 **Eine Abweichung, die ihr sonst suchen müsstet:** Der PostgreSQL-Treiber heißt auf dem Schulserver
-`pg8000`, nicht `psycopg2`. `psycopg2` ist dort nicht installiert und lässt sich auch nicht
-nachinstallieren — es müsste beim Installieren übersetzt werden, was auf der Hardware der Server
-nicht funktioniert. `pg8000` ist bereits vorhanden und wird über den Verbindungsstring ausgewählt:
+`pg8000`, nicht `psycopg2`. `pg8000` ist dort bereits installiert, `psycopg2` nicht — nehmt
+`pg8000`. Ausgewählt wird er über den Verbindungsstring:
 
 ```python
 # PostgreSQL
