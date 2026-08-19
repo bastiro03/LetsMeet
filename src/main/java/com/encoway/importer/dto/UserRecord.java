@@ -1,4 +1,4 @@
-package com.encoway.importer.model;
+package com.encoway.importer.dto;
 
 import java.time.LocalDate;
 
