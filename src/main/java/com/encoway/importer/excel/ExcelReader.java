@@ -24,7 +24,9 @@ public class ExcelReader {
                 String address = getString(row.getCell(1));
                 String email = getString(row.getCell(4));
 
-                LocalDate birthDate = parseDate(row.getCell(7));
+                String rawBirthDate = row.getCell(7).getStringCellValue().trim();
+                LocalDate birthDate = LocalDate.parse(rawBirthDate,
+                        java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy"));
 
                 String firstName = extractFirstName(fullName);
                 String lastName = extractLastName(fullName);
@@ -63,13 +65,13 @@ public class ExcelReader {
 
     private String extractPostalCode(String address) {
         if (address == null) return null;
-        String[] parts = address.split(", ");
+        String[] parts = address.split(", ", 3);
         return parts.length > 1 ? parts[1] : null;
     }
 
     private String extractCity(String address) {
         if (address == null) return null;
-        String[] parts = address.split(", ");
+        String[] parts = address.split(", ", 3);
         return parts.length > 2 ? parts[2] : null;
     }
 }
