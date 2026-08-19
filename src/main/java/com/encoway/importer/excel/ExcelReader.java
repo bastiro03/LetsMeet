@@ -25,9 +25,7 @@ public class ExcelReader {
                 String address = getString(row.getCell(1));
                 String email = getString(row.getCell(4));
 
-                String rawBirthDate = row.getCell(7).getStringCellValue().trim();
-                LocalDate birthDate = LocalDate.parse(rawBirthDate,
-                        java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+                LocalDate birthDate = parseDate(row.getCell(7));
 
                 String firstName = extractFirstName(fullName);
                 String lastName = extractLastName(fullName);

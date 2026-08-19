@@ -1,5 +1,8 @@
 package com.encoway.importer.db;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -7,7 +10,10 @@ import java.sql.Statement;
 //DDL
 
 public class SchemaCreator {
-    public void createSchema() throws SQLException {
+
+    private static final String VIEW_SQL = "/sql/view.sql";
+
+    public void createSchema() throws SQLException, IOException {
         try (Connection connection = DatabaseConnection.getConnection();
              Statement statement = connection.createStatement()) {
 
@@ -23,11 +29,16 @@ public class SchemaCreator {
                 );
             """);
 
-            statement.execute("""
-                CREATE OR REPLACE VIEW migration_users AS
-                SELECT email, first_name, last_name, birth_date, postal_code, city
-                FROM users;
-            """);
+            statement.execute(loadViewSql());
+        }
+    }
+
+    private String loadViewSql() throws IOException {
+        try (InputStream in = getClass().getResourceAsStream(VIEW_SQL)) {
+            if (in == null) {
+                throw new IOException("SQL-Ressource nicht gefunden: " + VIEW_SQL);
+            }
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         }
     }
 }
