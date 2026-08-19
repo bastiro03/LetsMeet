@@ -18,7 +18,7 @@ public class DataImporter {
                 """;
 
         try (Connection connection = DatabaseConnection.getConnection();
-            PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
             for (UserRecord userRecord : users) {
                 if (userRecord.email() == null || userRecord.email().isBlank()) {
