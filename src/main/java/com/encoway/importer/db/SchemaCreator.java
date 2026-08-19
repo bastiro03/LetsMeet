@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+//DDL
 public class SchemaCreator {
     public void createSchema() throws SQLException {
         try (Connection connection = DatabaseConnection.getConnection();
