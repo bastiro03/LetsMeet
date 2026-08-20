@@ -29,6 +29,45 @@ Beobachtungen, keine Vermutungen. Quelle für Akt 1: `Lets Meet DB Dump.xlsx`.
 - Als Quelle in Akt 1 ist **nur** die Excel-Datei erlaubt. `Lets_Meet_Hobbies.xml` (Nachlieferung)
   und die MongoDB (Akt 2) bleiben unberührt.
 
+### 2026-08-20 — Korrektur: Die Datei ist verschoben (Akt 2, vor dem Import)
+
+Die Beobachtungen vom 19.08. stammen aus der *unverschobenen* Sicht (Tabellenkopf als Quelle).
+Beim tatsächlichen Import zeigt sich: Die Spalten A–H sind **unabhängig voneinander versetzt**
+(Blockverschiebungen, Versätze −833 … +469 Zeilen). Fachliche Bedeutung je Spalte:
+
+- **A = Name** (`Nachname, Vorname`) · **B = Telefon** · **C = Hobby** (`Name %Prio%`) ·
+  **D = E-Mail** · **E = Geburtsdatum** (`dd.MM.yyyy`) · **F = „Interessiert an"** (`m/mw`) ·
+  **G = Geschlecht** (`m/w/nb`) · **H = Adresse** (`Straße, PLZ, Ort`).
+
+Konsequenzen (per Zeile gemessen, 1576 Datenzeilen):
+
+- Die Werte stehen nicht je Person in der erwarteten Spalte. Felder werden daher **wertbasiert**
+  erkannt, nicht über feste Spaltennummern: E-Mail = erster Wert mit `@` (Priorität D>C>E>G>F),
+  Geburtsdatum = Wert `dd.MM.yyyy` (Priorität E>D>F>G), Telefon = Spalte B nur bei
+  ziffernhaltigem Wert, Geschlecht = G sonst F, Interesse = F sonst G, Hobby = C sonst D.
+- **Name:** Namen sind im Abgleich mit der E-Mail nur per **Token-Matching** zuverlässig
+  (E-Mail-Lokalteil vs. Namensbestandteile, z. B. `martin.forster@…` ↔ `Forster, Martin`).
+  1455 von 1573 E-Mails finden so einen Namen. Ohne Matching wären viele Namen falsch
+  zugeordnet (Beispiel: `Hüneborn, Michael` steht 360 Zeilen über seiner E-Mail).
+- **Adresse:** wertbasiert nicht eindeutig (Straße enthält Ziffern wie eine PLZ). Regel mit
+  Rückgriff auf die Vorzeile: `H → A → vorherige H → vorherige A`. Gegen zwei bekannte
+  Personen validiert: `martin.forster@…` → `46286 Dorsten`, `ansgar.lange@…` → `17109
+  Demmin, Hansestadt`. 1570 von 1573 Adressen so gefunden.
+- **E-Mail-Korrektur:** von 1576 Datenzeilen haben **3 Zeilen gar keine E-Mail** (R522, R559,
+  R829; z. B. `Jansen, Frank`). Die Angabe „0 leere E-Mails" vom 19.08. trifft für den
+  tatsächlichen Datensatz nicht zu. **3 weitere E-Mails** liegen nur in anomalen Spalten
+  (`michael.hüneborn@…` in A, `myriam.greshake@…` in C, `eberhard.klempner@…` 33× in G) und
+  können keiner Personenzeile eindeutig zugeordnet werden. E-Mail-Duplikate (case-insensitiv):
+  **0** unter den 1573 importierbaren.
+- **Geschlecht-Korrektur:** die Zählung `m 918 / w 620 / nb 38` vom 19.08. stimmt nicht mit
+  den tatsächlichen Zellen überein (F/G enthalten nur `m`/`mw`, je 1× `w`/`nb` als Werte;
+  `eberhard.klempner@…` steht 33× in Spalte G). Die Häufigkeitstabelle wird erst nach dem
+  Import aus der Datenbank gezogen.
+- **Hobby:** 1561 von 1573 Zeilen tragen eine Hobby-Zelle → **4815 Hobby-Zeilen**
+  (Priorität zwischen zwei `%`-Zeichen, 0–100). Maximal 5 Hobbys je Person.
+- **Importumfang:** 1573 Personen (eine je Datenzeile mit E-Mail). Die 6 abweichenden Fälle
+  oben sind dokumentierte Grenzen.
+
 ---
 
 ## 2. Was haben wir daraufhin entschieden, und warum?
@@ -59,6 +98,27 @@ Die Regel, die wir angewendet haben, dazu die Alternative, die wir verworfen hab
   Schema-Erzeugung und Import laufen als eigene Schritte; die Reihenfolge ist verbindlich
   „leeren → importieren → prüfen". Verworfen: `DROP TABLE IF EXISTS` im Import — die geforderte
   Arbeitsweise ist der Neuaufbau aus dem Nichts, nicht das „Reparieren" eines alten Standes.
+
+### 2026-08-20 — V2-Modell, hybrider Import und Rekonstruktionsregeln
+
+- **ERD-Share-URL (Begleit-Website):** *(hier eintragen — für den Abschluss von Akt 2 Pflicht)*
+- **Hybrider Import (Kundin, „Beides"):** zwei Quellen, **ein** Ziel. Excel → PostgreSQL in Java
+  (POI + JDBC, `SchemaCreator` + `DataImporter`); MongoDB → PostgreSQL in Python (pymongo +
+  SQLAlchemy im Notebook). Die Kundinnen-App liest ausschließlich die PostgreSQL-Views.
+- **Zielmodell (3. Normalform):** `users`, `user_interests`, `user_hobbies` (Priorität −100…100,
+  `source='excel'`), `likes`, `messages`, `photos`. Die V2-Views (`migration_users`,
+  `migration_user_interests`, `migration_user_hobbies`, `migration_likes`,
+  `migration_messages`) sind die verbindliche Schnittstelle; interne Tabellen dürfen sich ändern.
+- **Werte unverändert, keine Codetabellen:** Geschlecht/Interesse bleiben als Quellwerte
+  (`m`, `w`, `nb`, `mw`) erhalten. Verworfen: Übersetzen in eigene Codes — der Vertrag verlangt
+  unveränderte Werte.
+- **Keine Platzhalter:** 3 Zeilen ohne E-Mail und 3 verwaiste E-Mails werden **nicht** importiert.
+  Verworfen: synthetische E-Mail-Adressen — würden den Vertrag („Werte unverändert") verletzen
+  und fiktive Personen erzeugen.
+- **Hobby-Parsing:** Priorität zwischen zwei `%`-Zeichen (`Name %78%`), mehrere Hobbys
+  semikolon-getrennt; nicht parsebare Zellen (z. B. Kopfzeilen-Platzhalter) werden übersprungen.
+- **Name via Token-Matching, Adresse via Positionsregel:** s. Korrektur in Abschnitt 1. Beide
+  Regeln sind dokumentierte Heuristiken und werden gegen den Kundinnen-Prüfstand (V2) verifiziert.
 
 ---
 
@@ -92,6 +152,25 @@ Was nicht importiert ist, fehlt sichtbar — hier steht, weshalb.
 - **Verzogene Felder (Hobbys, Geschlecht, Interessen, Telefon):** werden in Akt 1 weder importiert
   noch geprüft; ihre Aufnahme und ihre Regeln sind Gegenstand von Akt 2.
 
+### 2026-08-20 — Für V2 nicht importiert / Grenzen
+
+- **3 Zeilen ohne E-Mail** (R522 `Jansen, Frank`, R559 `Oberwinster, Maurice`, R829
+  `Hügel, Margret`): keine E-Mail in der gesamten Zeile; ohne E-Mail kein Primärschlüssel und
+  kein Vertragswert — Personen fehlen sichtbar. Alternative verworfen: Platzhalter-E-Mail.
+- **3 verwaiste E-Mails** (`michael.hüneborn@…`, `myriam.greshake@…`, `eberhard.klempner@…`):
+  liegen nur in anomalen Spalten, keine eigene Personenzeile mit Name/Adresse vorhanden. Eine
+  Zuordnung wäre eine nicht belegbare Annahme — bewusst nicht importiert. (`eberhard.klempner@…`
+  taucht 33× in Spalte G auf; dort ist die Zelle kein Geschlecht, sondern Rest einer
+  verschobenen E-Mail-Spalte.)
+- **~118 Personen ohne Namen:** Token-Matching findet für die restlichen E-Mails keinen
+  Namenssatz; Name bleibt `NULL` statt erfunden. Zählt der Prüfstand diese als Fehler, wird
+  nachgesteuert.
+- **Name-Reihenfolge in der Quelle ist uneinheitlich** (`Nachname, Vorname` ist die Regel, aber
+  auch `Vorname, Nachname` kommt vor). Das Matching prüft nur, dass beide Tokens vorkommen; die
+  Reihenfolge wird wie in der Quelle übernommen.
+- **Adresse ist eine Positionsheuristik** (H→A→Vorzeile), kein Wert-Abgleich; gegen zwei
+  bekannte Personen validiert, offen für Prüfstandsfälle.
+
 ---
 
 ## 4. Welche dieser Daten sind besonders schützenswert, und was folgt daraus?
@@ -111,3 +190,17 @@ Einmal im Projekt, spätestens wenn die Daten das erste Mal vollständig vor uns
   - Das Original-Excel bleibt lokal; es wird nicht in das Versionsverzeichnis übernommen, sofern
     nicht ausdrücklich gefordert.
   - Für Akt 2: Rechtsgrundlage und Schutzbedarf werden bei der Modellierung geprüft.
+
+### 2026-08-20 — Akt 2: Telefon, Geschlecht, Interessen kommen hinzu
+
+- **Neu schützenswert in V2:** **Telefonnummern** (Kontaktmöglichkeit einer Person) und
+  **Geschlecht/Interessen** (besonders sensibel: können als biografische Merkmale gelten).
+  Vorher wurden sie nicht importiert (V1-Minimalmodell).
+- **Konsequenzen:**
+  - Auch in der MongoDB nur lokal erreichbar (Compose bindet `27017` an `127.0.0.1`); Zugang
+    ohne `auth` nur im Entwicklungsnetz, im Zweifel Zugriffskontrolle aktivieren.
+  - Beispieldaten in Notebooks/SQL anonymisieren; keine echten Telefonnummern oder
+    Geschlechtswerte in Doku-Beispielen nennen.
+  - Löschung von Personen (Akt 3) betrifft dann auch Telefon/Geschlecht/Interessen.
+  - Rechtsgrundlage für die Migration (Auftragsverarbeitung, Art. 6/28 DSGVO) beim Kundinnen-
+    Termin erfragen und dokumentieren.
