@@ -39,7 +39,7 @@ services:
 
   kundinnen_app:
     container_name: lf8_lets_meet_kundinnen_app
-    image: berndheidemann/letsmeet-kundinnen-app:v3-whitespace-2026-08-10
+    image: berndheidemann/letsmeet-kundinnen-app:v3-result-labels-2026-08-19
     ports:
       # Oeffentlich erreichbar ist die App ueber Caddy (letsmeet.heide-dev.de),
       # das per localhost proxyt — der Container braucht kein 0.0.0.0.
