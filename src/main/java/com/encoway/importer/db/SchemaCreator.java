@@ -5,13 +5,16 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 /**
- * Erzeugt das Zielmodell im Schema {@code public} und stellt die Views des
- * Datenvertrags V2 bereit.
+ * Erzeugt das Zielmodell im Schema {@code public} und stellt die Views der
+ * Datenverträge V2/V3 bereit.
  *
  * <p>Die interne Struktur ist bewusst aufgeräumt (dritte Normalform): Jede
  * Zuordnung – Interesse, Hobby, Like, Nachricht – hat ihre eigene Tabelle.
  * Die Views sind die verbindliche Schnittstelle zur Kundinnen-App; ihre Namen
  * und Spaltentypen sind exakt durch den Datenvertrag vorgegeben.</p>
+ * <p>V3-Erweiterung: `user_hobbies.priority` ist nullable (XML-Hobbys haben
+ * `null`), und `rejections`/`migration_rejections` dokumentiert abgelehnte
+ * Transferfälle.</p>
  */
 public class SchemaCreator {
 
@@ -49,7 +52,7 @@ public class SchemaCreator {
                 CREATE TABLE user_hobbies (
                     email TEXT NOT NULL REFERENCES users(email),
                     hobby_name TEXT NOT NULL,
-                    priority INTEGER NOT NULL CHECK (priority BETWEEN -100 AND 100),
+                    priority INTEGER CHECK (priority BETWEEN -100 AND 100),
                     source TEXT NOT NULL,
                     PRIMARY KEY (email, hobby_name, source)
                 );
@@ -87,6 +90,16 @@ public class SchemaCreator {
             """);
 
             statement.execute("""
+                CREATE TABLE rejections (
+                    id SERIAL PRIMARY KEY,
+                    source TEXT NOT NULL,
+                    source_ref TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    UNIQUE (source, source_ref)
+                );
+            """);
+
+            statement.execute("""
                 CREATE OR REPLACE VIEW migration_users AS
                 SELECT email, first_name, last_name, birth_date, postal_code, city,
                        phone, gender
@@ -115,6 +128,12 @@ public class SchemaCreator {
                 CREATE OR REPLACE VIEW migration_messages AS
                 SELECT sender_email, receiver_email, body, sent_at, conversation_id
                 FROM messages;
+            """);
+
+            statement.execute("""
+                CREATE OR REPLACE VIEW migration_rejections AS
+                SELECT source, source_ref, reason
+                FROM rejections;
             """);
         }
     }

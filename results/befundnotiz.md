@@ -214,3 +214,13 @@ Einmal im Projekt, spätestens wenn die Daten das erste Mal vollständig vor uns
   - Löschung von Personen (Akt 3) betrifft dann auch Telefon/Geschlecht/Interessen.
   - Rechtsgrundlage für die Migration (Auftragsverarbeitung, Art. 6/28 DSGVO) beim Kundinnen-
     Termin erfragen und dokumentieren.
+
+### 2026-08-27 — Akt 3 (V3): XML-Hobbys, Rejections, Transfer und Idempotenz
+
+- **Was aufgefallen:** `Lets_Meet_Hobbies.xml` enthält 100 Nutzer, 300 Hobbys (alle mit `priority = null`, `source = xml`). Erwartet sind 301 XML-Hobbys (300 Basis + 1 akzeptierter Transfer `hobby[3]` bei `acar.nehir@...`) → total 5129 (4828 excel + 301 xml). `user_hobbies.priority` muss nullable sein (vorher `NOT NULL`). Monatlich wechselnde Hobbys sind nicht versioniert – Idempotenz muss via Snapshot geprüft werden.
+- **Transferpack (8 Fälle):** `change-request.xml` 6 Fälle (like[1], hobby[1], hobby[2], profile[1], hobby[3], hobby[4]) + 2 Encoding-Fälle (invalid/mojibake). Pflicht-Ablehnungen (4): like[1], hobby[1] (Priorität 101), hobby[2], hobby[4] → immer in `rejections`. Hobby[3] (P3) wird akzeptiert (`acar.nehir` …) und nicht abgelehnt. Die 3 optionalen Profile (P1_invalid_bytes, P1_mojibake, P2_sentinels) werden abgelehnt (0 Nutzer, 1 Rejection) – Alternative (akzeptieren) verworfen, da Mojibake (`MÃ¼ller` statt `Müller`) und Sentinel (`1900-01-01`/`unbekannt`) gegen Textqualität verstoßen.
+- **Verbotene Werte:** Like `abdel.sabah → transfer.orphan` und Hobby `abdulk..` mit Priorität 101 dürfen nicht im Ziel erscheinen – werden abgelehnt und nicht importiert.
+- **Rejections-Modell:** Tabelle `rejections(source, source_ref, reason)` + View `migration_rejections(source, source_ref, reason)` (6 Views total). `reason` fachlich begründet, keine leeren Felder, Unique `(source, source_ref)`, 7 Zeilen (alle außer hobby[3]).
+- **Textqualität:** Kodierung durchgängig UTF-8, keine Mojibake, keine Sentinelwerte. `MÃ¼ller` würde als Fehler zählen; `Byte`/`Müller`/`Pia` nur korrekt kodiert akzeptiert.
+- **Idempotenz:** V3 verlangt zweistufigen Snapshot (`--snapshot-out` / `--snapshot-compare`); Live-Lauf allein gibt „KEIN V3-GATE“. Zweitimport muss mengen- und wertgleich sein – `ON CONFLICT DO NOTHING` und stabile Sortierung sichern das.
+- **Konsequenz Datenschutz:** XML-Hobbys sind ebenfalls personenbezogen; `source` dokumentiert Herkunft. Rejections enthalten keine PII außer Pack-Referenzen.

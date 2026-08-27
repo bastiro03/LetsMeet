@@ -1,7 +1,7 @@
--- DDL — PostgreSQL-Zielsystem (Akt 2, V2)
+-- DDL — PostgreSQL-Zielsystem (Akt 2/3, V2/V3)
 -- Entspricht src/main/java/com/encoway/importer/db/SchemaCreator.java.
 -- Aufbau: leeren → Schema erzeugen → Excel-Import (Java) → MongoDB-Import (Python)
--- → prüfen (Kundinnen-Checker V2).
+-- → XML-Import (Python, V3) → Rejections (V3) → prüfen (Kundinnen-Checker V2/V3).
 --
 -- Hinweis: Diese Datei enthält bewusst kein DROP. Das Leeren ist ein eigener
 -- Schritt des Neuaufbaus („leeren → importieren → prüfen"); ein wiederholter
@@ -32,7 +32,7 @@ CREATE TABLE user_interests (
 CREATE TABLE user_hobbies (
     email      TEXT NOT NULL REFERENCES users(email),
     hobby_name TEXT NOT NULL,
-    priority   INTEGER NOT NULL CHECK (priority BETWEEN -100 AND 100),
+    priority   INTEGER CHECK (priority BETWEEN -100 AND 100),
     source     TEXT NOT NULL,
     PRIMARY KEY (email, hobby_name, source)
 );
@@ -62,6 +62,14 @@ CREATE TABLE photos (
     uploaded_at        TIMESTAMP
 );
 
+CREATE TABLE rejections (
+    id         SERIAL PRIMARY KEY,
+    source     TEXT NOT NULL,
+    source_ref TEXT NOT NULL,
+    reason     TEXT NOT NULL,
+    UNIQUE (source, source_ref)
+);
+
 -- E-Mail-Schlüssel sprachunabhängig eindeutig (Vertrag V2: case-insensitiv)
 CREATE UNIQUE INDEX users_email_lower_idx ON users (lower(email));
 
@@ -89,3 +97,7 @@ CREATE OR REPLACE VIEW migration_likes AS
 CREATE OR REPLACE VIEW migration_messages AS
     SELECT sender_email, receiver_email, body, sent_at, conversation_id
     FROM messages;
+
+CREATE OR REPLACE VIEW migration_rejections AS
+    SELECT source, source_ref, reason
+    FROM rejections;

@@ -83,7 +83,11 @@ public class DataImporter {
             for (HobbyRecord hobby : hobbies) {
                 preparedStatement.setString(1, hobby.email());
                 preparedStatement.setString(2, hobby.hobbyName());
-                preparedStatement.setInt(3, hobby.priority());
+                if (hobby.priority() == null) {
+                    preparedStatement.setNull(3, java.sql.Types.INTEGER);
+                } else {
+                    preparedStatement.setInt(3, hobby.priority());
+                }
                 preparedStatement.setString(4, hobby.source());
                 preparedStatement.executeUpdate();
             }

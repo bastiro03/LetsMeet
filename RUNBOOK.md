@@ -1,18 +1,19 @@
-# RUNBOOK — LetsMeet-Neuaufbau (Akt 2, V2)
+# RUNBOOK — LetsMeet-Neuaufbau (Akt 2/3, V2/V3)
 
-Dieses Dokument beschreibt, wie ein anderes Team den Datenbestand für Akt 2 aus dem Nichts
-neu aufbaut und prüft. Der Ablauf ist immer derselbe: **leeren → Excel-Import → MongoDB-Import
-→ prüfen.**
+Dieses Dokument beschreibt, wie ein anderes Team den Datenbestand für Akt 2 (V2) und Akt 3 (V3)
+aus dem Nichts neu aufbaut und prüft. Der Ablauf ist immer derselbe:
+**leeren → Excel-Import → MongoDB-Import → (V3: XML-Import + Rejections) → prüfen.**
 
-Zwei Quellen, ein Ziel:
+Quellen und Ziel:
 
 | Quelle | Importweg | Inhalt |
 |---|---|---|
-| `Lets Meet DB Dump.xlsx` | Java (`Main`, POI + JDBC) | Personen, Interessen, Hobbys |
-| MongoDB `LetsMeet.users` | Python-Notebook (`pymongo` + SQLAlchemy) | Likes, Nachrichten, ergänzende Profildaten |
+| `Lets Meet DB Dump.xlsx` | Java (`Main`, POI + JDBC) | Personen, Interessen, Hobbys (4828) |
+| MongoDB `LetsMeet.users` | Python-Notebook (`pymongo` + SQLAlchemy) | Likes (500), Nachrichten (300), ergänzende Profildaten |
+| `Lets_Meet_Hobbies.xml` | Python (`import_xml.py`) | Hobbys (301, source=xml) + Rejections (7, V3) |
 
 Ziel: PostgreSQL `lf8_lets_meet_db`. Die Kundinnen-App liest ausschließlich die Views des
-Datenvertrags V2.
+jeweiligen Datenvertrags (V2: 5 Views, V3: 6 Views + Rejections).
 
 Voraussetzungen:
 
@@ -127,6 +128,49 @@ Variante B:
 letsmeet contract V2
 letsmeet check V2
 ```
+
+---
+
+## Schritt 5 — XML-Import + Rejections (nur V3)
+
+Für V3 nach Schritt 3 zusätzlich:
+
+```bash
+py import_xml.py   # 300 XML-Hobbys + P3 (acar.nehir) = 301, total 5129; 7 Rejections
+# alternativ: Notebook-Logik in 03-import-mongodb.ipynb enthält denselben Code
+```
+
+Danach in der Datenbank (V3):
+
+```sql
+SELECT count(*) FROM user_hobbies WHERE source='xml'; -- 301
+SELECT count(*) FROM user_hobbies; -- 5129 (4828 excel + 301 xml)
+SELECT count(*) FROM rejections; -- 7
+SELECT count(*) FROM migration_rejections; -- 7
+```
+
+## Schritt 6 — Prüfen (Kundinnen-Checker V3, zweistufig)
+
+V3 verlangt Idempotenz via Snapshot:
+
+```bash
+# Lauf 1: frisch importieren (Schritt 1-3+5) und Snapshot speichern
+LETSMEET_CONTRACT_VERSION=V3 docker compose up -d --force-recreate kundinnen_app
+docker compose run --rm -e CONTRACT_VERSION=V3 kundinnen_app node server/dist/cli.js --snapshot-out /data/v3-snapshot.json
+# Lauf 2: erneut leeren + importieren (Schritt 1-3+5) und vergleichen
+docker compose run --rm -e CONTRACT_VERSION=V3 kundinnen_app node server/dist/cli.js --snapshot-compare /data/v3-snapshot.json
+```
+
+Variante B:
+
+```bash
+letsmeet contract V3
+letsmeet check V3 --snapshot-out /tmp/v3.json
+# erneut leeren + importieren
+letsmeet check V3 --snapshot-compare /tmp/v3.json
+```
+
+Exit-Code `0` in Lauf 2 = V3 GATE GRÜN (alle 6 Views + 8 Transferfälle + Idempotenz).
 
 ---
 
