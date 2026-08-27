@@ -46,7 +46,7 @@ class HobbyReaderTest {
 
     @Test
     void readsEveryParsableHobbyCell() {
-        assertEquals(4815, hobbies.size());
+        assertEquals(4828, hobbies.size());
     }
 
     @Test

@@ -65,19 +65,19 @@ mvn -q package
 java -jar target/letsmeet-import-1.0.0-jar-with-dependencies.jar
 ```
 
-Erwartete Ausgabe:
+Erwartete Ausgabe (Clean-Dump 2026-08-27, Hybrid-Reader unterstützt auch Verschoben):
 
 ```
-Excel-Import completed: 1573 users, 4815 hobbies.
+Excel-Import completed: 1576 users, 4828 hobbies.
 ```
 
-Danach in der Datenbank:
+Danach in der Datenbank (Interessen: `mw` -> 2 Zeilen, daher 1609):
 
 ```sql
--- 1573  users          1561 user_interests   4815 user_hobbies
-SELECT count(*) FROM users;         -- 1573
-SELECT count(*) FROM user_interests;-- 1573 (eine Zeile je Person mit Interesse)
-SELECT count(*) FROM user_hobbies;  -- 4815
+-- 1576 users  1609 user_interests  4828 user_hobbies  500 likes  300 messages (nach Schritt 3)
+SELECT count(*) FROM users;         -- 1576
+SELECT count(*) FROM user_interests;-- 1609 (mw gesplittet, s. Befundnotiz 2026-08-27)
+SELECT count(*) FROM user_hobbies;  -- 4828
 ```
 
 ---
@@ -87,18 +87,25 @@ SELECT count(*) FROM user_hobbies;  -- 4815
 Ausführen im JupyterLab (Schulserver) oder in der lokalen Python-Umgebung (Docker):
 
 1. `notebooks/02-profilierung-mongodb.ipynb` — Quelle profilieren (Pflicht vor dem Import)
-2. `notebooks/03-import-mongodb.ipynb` — Likes und Nachrichten importieren
+2. `notebooks/03-import-mongodb.ipynb` — Likes und Nachrichten importieren (enthält Mapping `_id`/`timestamp`/`message`, case-insensitive E-Mail-Mapping, Zeitformat-Fallback `YYYY-MM-DD`/`DD.MM.YYYY` und die Stammdaten-Korrekturen für 7 Namen/3 Telefone – s. Befundnotiz 2026-08-27)
 
 Im Notebook-Import sind zwei Stellen bewusst als Entscheidung sichtbar: der Umgang mit
 **verwaisten Referenzen** (E-Mails, die nur in der MongoDB vorkommen) und die Übernahme
 **ergänzender Profildaten** (Widersprüche zur Excel-Quelle). Die getroffene Regel gehört in die
 Befundnotiz.
 
+Alternativ ohne Notebook direkt mit Python (Docker-Variante A):
+
+```bash
+py import_mongo_fixed.py   # liegt im Projektroot, nutzt psycopg2/pg8000-Fallback
+```
+
 Danach in der Datenbank:
 
 ```sql
-SELECT count(*) FROM likes;    -- aus dem Notebook notieren
-SELECT count(*) FROM messages; -- aus dem Notebook notieren
+SELECT count(*) FROM likes;    -- 500
+SELECT count(*) FROM messages; -- 300
+SELECT count(*) FROM user_interests; -- 1609 (nach Interessen-Splitting)
 ```
 
 ---

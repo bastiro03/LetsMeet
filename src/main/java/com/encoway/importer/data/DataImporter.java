@@ -43,6 +43,7 @@ public class DataImporter {
         String sql = """
                 INSERT INTO user_interests(email, interest_code)
                 VALUES (?, ?)
+                ON CONFLICT (email, interest_code) DO NOTHING
                 """;
 
         try (Connection connection = DatabaseConnection.getConnection();
@@ -52,9 +53,19 @@ public class DataImporter {
                 if (userRecord.email() == null || userRecord.interest() == null) {
                     continue;
                 }
-                preparedStatement.setString(1, userRecord.email());
-                preparedStatement.setString(2, userRecord.interest());
-                preparedStatement.executeUpdate();
+                String raw = userRecord.interest().trim();
+                // „mw" bedeutet interessiert an m und w -> zwei Zeilen (Befund 1609 statt 1576)
+                List<String> codes;
+                if ("mw".equals(raw)) {
+                    codes = List.of("m", "w");
+                } else {
+                    codes = List.of(raw);
+                }
+                for (String code : codes) {
+                    preparedStatement.setString(1, userRecord.email());
+                    preparedStatement.setString(2, code);
+                    preparedStatement.executeUpdate();
+                }
             }
         }
     }

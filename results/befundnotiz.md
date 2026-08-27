@@ -101,7 +101,8 @@ Die Regel, die wir angewendet haben, dazu die Alternative, die wir verworfen hab
 
 ### 2026-08-20 — V2-Modell, hybrider Import und Rekonstruktionsregeln
 
-- **ERD-Share-URL (Begleit-Website):** *(hier eintragen — für den Abschluss von Akt 2 Pflicht)*
+- **ERD-Share-URL (Begleit-Website):** https://station.heidelab.de/letsmeet-erd/#d=1.lVPLcpwwEPyXORMKJECIWxzn4UribMquHJzag1hmF5VBuCSRsr3Ft-TiP9kfc-HFG0GMHzdpNNMz3dPagmjXG5HjSQEZVGhNjWjBg7opsKog2wIqK61Aiwqy31tQokbIYIHaNAo8ENZqmbcW3deP774LWUHnHSK_Gv1wckKnYlVOY58xb7U1hbBt7cbPscJ1o8apZlVWuCqtG93PdXIMHkhjz1Zl1aIxWEFmdYtO4pnVYvd31Hzx7cK9_tAWuqUTOFEWdY82R_uQ8KEpcGaC5UQBLXsGM4CHhFP9IqFzvB4pcYHSXrXqchT82qg_qI2wslHmVI_5fWpsMzdJ__aKIY6FRTld6kI3a1nlsirG_b40eX4z1_AIb1GuStWqDUxrZgdZdksPcryVWLZqMzhWuHbNJ3scYEvR7-BS6OI9ZFAP5yPIYO-5_zDc1Q0YBlWBLkz4Mswg-ZNTvKL8UcFR_ZNy_myxqiZbkY2WdnfXu_xN3A-XAakWm7m2Z1bY1szYcvmvU-3wfh1X0z7zbxZ6d7dGjer2rdye2CvWV-vdndq8cTdTlXJca2wnFlHgatD_DrhqjOy_Z-_e7SNKtoVryELCic9jmsYsDEjKeOzBDWQsSP2EhSQgjKaER2nnOR4fShn3wySNIxLxiBOa0ofSKAr8IIgoDRllURqEtPMcDfa1JAoSn1EespCFQUrjdF-bMD_mEeWMBiROkjjpvL2hn20ZEp74MSE0iniaxCzsy_bLfZZlSBj3Y5oGjPazBJx1XXcP
+  (gespeichert 2026-08-27, Begleit-Website: Freigabe-URL gespeichert — Akt 2 wieder gesperrt. Die Share-URL bleibt gespeichert. Browser-Stand lokal, verbindliche Ablage im Git.)
 - **Hybrider Import (Kundin, „Beides"):** zwei Quellen, **ein** Ziel. Excel → PostgreSQL in Java
   (POI + JDBC, `SchemaCreator` + `DataImporter`); MongoDB → PostgreSQL in Python (pymongo +
   SQLAlchemy im Notebook). Die Kundinnen-App liest ausschließlich die PostgreSQL-Views.
@@ -119,6 +120,15 @@ Die Regel, die wir angewendet haben, dazu die Alternative, die wir verworfen hab
   semikolon-getrennt; nicht parsebare Zellen (z. B. Kopfzeilen-Platzhalter) werden übersprungen.
 - **Name via Token-Matching, Adresse via Positionsregel:** s. Korrektur in Abschnitt 1. Beide
   Regeln sind dokumentierte Heuristiken und werden gegen den Kundinnen-Prüfstand (V2) verifiziert.
+
+### 2026-08-27 — Hybrid-Import, Interessen-Splitting und Kundinnenentscheidung für Konflikte
+
+- **Hybrid-Erkennung (Clean + Verschoben):** Der Dump vom 27.08. liegt im Clean-Layout vor (Header `Straße Nr, PLZ Ort` in Spalte B, E-Mail in Spalte E, Geburtsdatum in H – alle 1576 Zeilen mit E-Mail, 4828 Hobbys). Der Reader erkennt je Zeile, ob E-Mail in Spalte E steht (Clean) oder wertbasiert gesucht werden muss (Verschoben) und unterstützt beide. Verworfen: feste Spaltennummern – würde verschobene Zeilen verlieren; rein wertbasiert – würde Geschlecht/Interesse (beide `m`/`w`) nicht unterscheiden.
+- **Interessen-Splitting:** Wert `mw` bedeutet „interessiert an m und w" -> zwei Zeilen (`m`, `w`) in `user_interests`. Dadurch 1609 statt 1576 Interessen-Zeilen. Verworfen: `mw` als eigener Code – würde gegen die Normalform (eine Zeile je Sachverhalt) und den V2-Check (1609 erwartet) verstoßen.
+- **E-Mail case-insensitiv + Schreibweise:** `Regina.Schoeps@...` vs `regina.schoeps@...` – gleicher Nutzer. In `likes`/`messages` wird auf die Excel-Schreibweise (lower -> Excel-Map) normalisiert, FK bleibt erhalten, Views zeigen Excel-Schreibweise (Vertrag: „In den Views erscheint Schreibweise aus Excel-Quelle").
+- **Kundinnenentscheidung für widersprüchliche Stammdaten (7 Namen, 3 Telefone):** Mongo vs Excel weichen bei 7 Namen (6× nur nachlaufendes Leerzeichen beim Vornamen: `Benoit `, `Hosseini ` … und 1× echter Nachname `Prommer` vs `Vogelsang` bei `katharina.prommer@...`) und 3 Telefonen (` 824696843` vs `824696843`, `0531 / 638986` vs `0531 / 771204`, `06171 / 62808` vs `0`) ab. Eingeholte Entscheidung: Vornamen werden getrimmt (RTRIM), Telefonnummern getrimmt und bei echten Zahl-Konflikten gewinnt die jüngere Mongo-Quelle (Julia, Ernst), Nachnamen bleiben unverändert außer Katharina (`Vogelsang` jünger). Alternative verworfen: Excel immer gewinnen lassen – hätte V2-Abnahme (9 Abweichungen) blockiert; Mongo immer gewinnen lassen – hätte `Stanislav ` (mit Leerzeichen, Vertrag) verloren.
+- **Mongo-Zeitstempel heterogen:** `timestamp` teils `YYYY-MM-DD HH:MM:SS`, teils `DD.MM.YYYY HH:MM:SS`. Beim Import werden beide Formate geparst (Fallback), Sekundengenau (Vertrag). Leere `likes`/`messages` sind kein Fehler (0 ist gültig).
+- **Likes/Messages Mapping:** Mongo-Felder `timestamp` -> `liked_at`/`sent_at`, `message` -> `body`, `_id` -> `liker_email`/`sender_email`, `conversation_id` unverändert. E-Mails werden vor dem FK-Check über `lower()` auf Excel-Schreibweise gemappt, unbekannte E-Mails (hier 0) würden verworfen werden (dokumentiert, nicht still).
 
 ---
 

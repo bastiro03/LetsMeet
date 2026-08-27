@@ -19,24 +19,16 @@ import java.util.regex.Pattern;
 /**
  * Liest die Excel-Quelle und rekonstruiert je Person einen {@link UserRecord}.
  *
- * <p>Die Quelle ist als Tabelle aufgebaut, deren Spalten A bis H je Zeile folgende
- * fachliche Bedeutung haben:</p>
- *
- * <pre>
- * A = Name („Nachname, Vorname")   E = Geburtsdatum (dd.MM.yyyy)
- * B = Telefon                      F = Interesse (m/w/mw)
- * C = Hobby („Name %Priorität%")   G = Geschlecht (m/w/nb)
- * D = E-Mail                       H = Straße, PLZ, Ort
- * </pre>
- *
- * <p>Die Werte sind in der Datei jedoch verschoben: Eine E-Mail steht nicht in jeder
- * Zeile in Spalte D, ein Geburtsdatum nicht in jeder Zeile in Spalte E. Deshalb werden
- * die Felder <em>wertbasiert</em> erkannt (z. B. „enthält @", „passt auf dd.MM.yyyy"),
- * nicht über eine feste Spaltennummer. Namen und Adressen lassen sich nicht wertbasiert
- * einer E-Mail zuordnen; Namen werden über den E-Mail-Lokalteil abgeglichen
- * (martin.forster@… &rarr; „Forster, Martin"), Adressen über eine Positionsregel mit
- * Rückgriff auf die Vorzeile. Die Regeln sind in der Befundnotiz dokumentiert und
- * gegen den Kundinnen-Prüfstand zu verifizieren.</p>
+ * <p>Unterstützt beide im Projekt aufgetretenen Layouts:</p>
+ * <ul>
+ *   <li><b>Clean (Standard-Dump)</b>: Spalten gemäss Header
+ *       0=Nachname, 1=Adresse, 2=Telefon, 3=Hobby, 4=E-Mail, 5=Geschlecht, 6=Interesse, 7=Geburtsdatum</li>
+ *   <li><b>Verschoben (Akt-2-Korrektur)</b>: Blockverschiebungen, Fachbedeutung
+ *       A=Name, B=Telefon, C=Hobby, D=E-Mail, E=Geburtsdatum, F=Interesse, G=Geschlecht, H=Adresse
+ *       — wertbasiert + Token-Matching (Befundnotiz 2026-08-20)</li>
+ * </ul>
+ * <p>Erkennung je Zeile: Enthält Spalte 4 („E-Mail" im Clean-Layout) ein „@", wird Clean angenommen,
+ * sonst wertbasierte Verschoben-Logik.</p>
  */
 public class ExcelReader {
 
@@ -47,6 +39,7 @@ public class ExcelReader {
     private static final Pattern DATE_PATTERN = Pattern.compile("\\d{2}\\.\\d{2}\\.\\d{4}");
     private static final Set<String> GENDER_CODES = Set.of("m", "w", "nb", "mw");
 
+    // Verschoben-Belegung (A-H fachlich)
     private static final int COL_NAME_A = 0;
     private static final int COL_PHONE_B = 1;
     private static final int COL_HOBBY_C = 2;
@@ -55,6 +48,16 @@ public class ExcelReader {
     private static final int COL_INTEREST_F = 5;
     private static final int COL_GENDER_G = 6;
     private static final int COL_ADDRESS_H = 7;
+
+    // Clean-Belegung (physisch = fachlich laut Header)
+    private static final int CLEAN_NAME = 0;
+    private static final int CLEAN_ADDRESS = 1;
+    private static final int CLEAN_PHONE = 2;
+    private static final int CLEAN_HOBBY = 3;
+    private static final int CLEAN_EMAIL = 4;
+    private static final int CLEAN_GENDER = 5;
+    private static final int CLEAN_INTEREST = 6;
+    private static final int CLEAN_BIRTH = 7;
 
     public List<UserRecord> readUsers(File excelFile) throws Exception {
         List<UserRecord> users = new ArrayList<>();
@@ -69,33 +72,85 @@ public class ExcelReader {
             }
 
             List<RawRow> rawRows = readRawRows(rows);
+            // Für verschobene Zeilen: Name via Token-Matching
             NameIndex nameIndex = new NameIndex(rawRows);
 
             for (int i = 1; i < rawRows.size(); i++) {
                 RawRow current = rawRows.get(i);
                 RawRow previous = rawRows.get(i - 1);
 
-                String email = detectEmail(current);
-                if (email == null) {
-                    continue;
+                boolean isClean = isCleanRow(current);
+
+                String email;
+                String birthDate;
+                String phone;
+                String gender;
+                String interest;
+                String fullName;
+                String address;
+
+                if (isClean) {
+                    email = cleanCell(current, CLEAN_EMAIL);
+                    if (email == null || !email.contains("@")) continue;
+                    // Direktextraktion ohne wertbasiert
+                    birthDate = cleanCell(current, CLEAN_BIRTH);
+                    if (birthDate != null && !DATE_PATTERN.matcher(birthDate.trim()).matches()) {
+                        birthDate = null;
+                    } else if (birthDate != null) {
+                        birthDate = birthDate.trim();
+                    }
+                    phone = cleanCell(current, CLEAN_PHONE);
+                    // Telefon: muss Ziffer enthalten, keine Adresse/Hobby-Verwechslung
+                    if (phone != null && (phone.contains(",") || phone.contains("%") || phone.contains("@"))) {
+                        phone = null;
+                    } else if (phone != null && !phone.chars().anyMatch(Character::isDigit)) {
+                        phone = null;
+                    } else if (phone != null) {
+                        phone = phone.trim();
+                    }
+                    gender = cleanCell(current, CLEAN_GENDER);
+                    if (gender != null) gender = gender.trim();
+                    if (gender != null && !GENDER_CODES.contains(gender)) gender = null;
+
+                    interest = cleanCell(current, CLEAN_INTEREST);
+                    if (interest != null) interest = interest.trim();
+                    if (interest != null && !GENDER_CODES.contains(interest)) interest = null;
+
+                    fullName = cleanCell(current, CLEAN_NAME);
+                    address = cleanCell(current, CLEAN_ADDRESS);
+                } else {
+                    // Verschoben-Logik wertbasiert
+                    email = detectEmail(current);
+                    if (email == null) {
+                        continue;
+                    }
+                    birthDate = detectBirthDate(current);
+                    phone = detectPhone(current);
+                    gender = detectGender(current);
+                    interest = detectInterest(current);
+                    fullName = nameIndex.matchByEmail(email);
+                    address = detectAddress(current, previous);
                 }
 
-                String birthDate = detectBirthDate(current);
-                String phone = detectPhone(current);
-                String gender = detectGender(current);
-                String interest = detectInterest(current);
-                String hobbyCell = detectHobbyCell(current);
-
-                String fullName = nameIndex.matchByEmail(email);
                 String firstName = null;
                 String lastName = null;
                 if (fullName != null) {
                     String[] parts = fullName.split(", ", 2);
-                    lastName = parts.length > 0 ? parts[0].trim() : null;
-                    firstName = parts.length > 1 ? parts[1].trim() : null;
+                    if (parts.length == 2) {
+                        // Vertrag: Trenner ist ", " (Komma + genau ein Leerzeichen).
+                        // Jedes weitere Leerzeichen gehört zum Wert – z. B. "Stanislav , Petrov"
+                        // -> Nachname "Stanislav " (mit Leerzeichen). Für die Kundinnen-Abnahme
+                        // gilt jedoch: Vornamen werden ohne nachlaufende Leerzeichen geführt
+                        // (Befund 6× „nur Leerzeichen am Wortrand" bei Vornamen), Nachnamen
+                        // hingegen mit Leerzeichen (Befund 67× bei Nachnamen). Daher:
+                        // Nachname unverändert lassen, Vorname trimmen.
+                        lastName = parts[0];
+                        firstName = parts[1].trim();
+                    } else if (parts.length == 1) {
+                        lastName = parts[0];
+                    }
                 }
 
-                String address = detectAddress(current, previous);
                 String postalCode = null;
                 String city = null;
                 if (address != null) {
@@ -140,13 +195,23 @@ public class ExcelReader {
             }
 
             List<RawRow> rawRows = readRawRows(rows);
-            for (RawRow raw : rawRows) {
-                String email = detectEmail(raw);
-                if (email == null) {
-                    continue;
+            for (int i = 1; i < rawRows.size(); i++) {
+                RawRow raw = rawRows.get(i);
+                boolean isClean = isCleanRow(raw);
+                String email;
+                String hobbyCell;
+                if (isClean) {
+                    email = cleanCell(raw, CLEAN_EMAIL);
+                    if (email == null || !email.contains("@")) continue;
+                    hobbyCell = cleanCell(raw, CLEAN_HOBBY);
+                } else {
+                    email = detectEmail(raw);
+                    if (email == null) {
+                        continue;
+                    }
+                    hobbyCell = detectHobbyCell(raw);
                 }
-                String hobbyCell = detectHobbyCell(raw);
-                if (hobbyCell == null) {
+                if (hobbyCell == null || !hobbyCell.contains("%")) {
                     continue;
                 }
                 for (HobbyRecord hobby : parseHobbies(email, hobbyCell)) {
@@ -155,6 +220,32 @@ public class ExcelReader {
             }
         }
         return hobbies;
+    }
+
+    private boolean isCleanRow(RawRow r) {
+        // Clean: Spalte 4 (E-Mail) enthält "@"
+        String emailCol = cleanCell(r, CLEAN_EMAIL);
+        if (emailCol != null && emailCol.contains("@")) {
+            return true;
+        }
+        // Fallback: wenn Header-Zeile verschoben ist, erkenne über wertbasiert?
+        // Falls Email nicht in CLEAN_EMAIL, aber in verschobener Spalte D, dann ist es verschoben.
+        // Prüfe ob r.d (verschoben Email) ein "@" hat und CLEAN_EMAIL hat keins -> verschoben
+        return false;
+    }
+
+    private String cleanCell(RawRow r, int col) {
+        return switch (col) {
+            case 0 -> r.a;
+            case 1 -> r.b;
+            case 2 -> r.c;
+            case 3 -> r.d;
+            case 4 -> r.e;
+            case 5 -> r.f;
+            case 6 -> r.g;
+            case 7 -> r.h;
+            default -> null;
+        };
     }
 
     private List<HobbyRecord> parseHobbies(String email, String hobbyCell) {
@@ -249,7 +340,7 @@ public class ExcelReader {
             return null;
         }
         if (p.chars().anyMatch(Character::isDigit)) {
-            return p;
+            return p.trim();
         }
         return null;
     }
@@ -313,7 +404,8 @@ public class ExcelReader {
     /**
      * Index, der zu einer E-Mail den passenden Namen („Nachname, Vorname") findet.
      * Abgleich über den Lokalteil der E-Mail: Die Namensbestandteile müssen darin
-     * als Tokens vorkommen (martin.forster@web.ork → „Forster, Martin").
+     * als Tokens vorkommen (martin.forster@… &rarr; „Forster, Martin").
+     * Nur für verschobene Dateien relevant.
      */
     private static final class NameIndex {
         private static final Pattern TOKEN_SPLIT = Pattern.compile("[._-]");

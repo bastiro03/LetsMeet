@@ -10,7 +10,8 @@ Java-`SchemaCreator` (`src/main/java/com/encoway/importer/db/SchemaCreator.java`
 Das ER-Diagramm entsteht in der Begleit-Website (LetsMeet-Modellierungsstation).
 Die **Share-URL** wird hier und in der Befundnotiz gesichert:
 
-- ERD-Share-URL: *(hier eintragen)*
+- ERD-Share-URL: https://station.heidelab.de/letsmeet-erd/#d=1.lVPLcpwwEPyXORMKJECIWxzn4UribMquHJzag1hmF5VBuCSRsr3Ft-TiP9kfc-HFG0GMHzdpNNMz3dPagmjXG5HjSQEZVGhNjWjBg7opsKog2wIqK61Aiwqy31tQokbIYIHaNAo8ENZqmbcW3deP774LWUHnHSK_Gv1wckKnYlVOY58xb7U1hbBt7cbPscJ1o8apZlVWuCqtG93PdXIMHkhjz1Zl1aIxWEFmdYtO4pnVYvd31Hzx7cK9_tAWuqUTOFEWdY82R_uQ8KEpcGaC5UQBLXsGM4CHhFP9IqFzvB4pcYHSXrXqchT82qg_qI2wslHmVI_5fWpsMzdJ__aKIY6FRTld6kI3a1nlsirG_b40eX4z1_AIb1GuStWqDUxrZgdZdksPcryVWLZqMzhWuHbNJ3scYEvR7-BS6OI9ZFAP5yPIYO-5_zDc1Q0YBlWBLkz4Mswg-ZNTvKL8UcFR_ZNy_myxqiZbkY2WdnfXu_xN3A-XAakWm7m2Z1bY1szYcvmvU-3wfh1X0z7zbxZ6d7dGjer2rdye2CvWV-vdndq8cTdTlXJca2wnFlHgatD_DrhqjOy_Z-_e7SNKtoVryELCic9jmsYsDEjKeOzBDWQsSP2EhSQgjKaER2nnOR4fShn3wySNIxLxiBOa0ofSKAr8IIgoDRllURqEtPMcDfa1JAoSn1EespCFQUrjdF-bMD_mEeWMBiROkjjpvL2hn20ZEp74MSE0iniaxCzsy_bLfZZlSBj3Y5oGjPazBJx1XXcP
+  (gespeichert 2026-08-27 — Begleit-Website meldet „Freigabe-URL gespeichert“)
 
 ```mermaid
 erDiagram

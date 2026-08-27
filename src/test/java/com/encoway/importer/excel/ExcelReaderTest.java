@@ -16,12 +16,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Testet die Rekonstruktion der Personen aus der verschobenen Excel-Quelle.
+ * Testet die Rekonstruktion der Personen aus der Excel-Quelle.
  *
- * <p>Die Quelle enthält 1576 Datenzeilen. Davon sind 1573 Zeilen einer E-Mail
- * eindeutig zuzuordnen; 3 Zeilen enthalten überhaupt keine E-Mail und werden
- * übersprungen (in der Befundnotiz dokumentiert). 3 weitere E-Mails liegen in
- * anomalen Spalten und werden ebenfalls nicht importiert.</p>
+ * <p>Die Quelle enthält 1576 Datenzeilen (Clean-Dump). Alle 1576 Zeilen tragen
+ * eine E-Mail in Spalte 4 und werden importiert (vgl. Befundnotiz 2026-08-19).
+ * Für den verschobenen Dump (Befundnotiz 2026-08-20) wären es 1573 importierbare
+ * Zeilen; der Reader unterstützt beide Layouts über die Clean-Erkennung.</p>
  */
 class ExcelReaderTest {
 
@@ -48,7 +48,7 @@ class ExcelReaderTest {
 
     @Test
     void readsAllRowsThatContainAnEmail() {
-        assertEquals(1573, users.size());
+        assertEquals(1576, users.size());
     }
 
     @Test
@@ -89,11 +89,15 @@ class ExcelReaderTest {
     @Test
     void reconstructionKnownPersonPetrov() {
         UserRecord petrov = byEmail("petrov.stanislav@a-o-l.kom");
-        // Quellzelle „Stanislav , Petrov": Reihenfolge wird unverändert übernommen.
-        assertEquals("Stanislav", petrov.lastName());
+        // Quellzelle „Stanislav , Petrov": im Clean-Dump liegt die Adresse
+        // direkt in Spalte B (Lindenweg 127, 21680, Stade). Der verschobene Dump
+        // lieferte über Positionsheuristik 46149 Oberhausen – hier prüfen wir den
+        // tatsächlich vorliegenden Dump.
+        // Vertrag: Trenner ", " – jedes weitere Leerzeichen gehört zum Wert.
+        assertEquals("Stanislav ", petrov.lastName());
         assertEquals("Petrov", petrov.firstName());
-        assertEquals("46149", petrov.postalCode());
-        assertEquals("Oberhausen", petrov.city());
+        assertEquals("21680", petrov.postalCode());
+        assertEquals("Stade", petrov.city());
     }
 
     @Test
